@@ -12,6 +12,32 @@ import java.util.List;
 
 public class DataRetriever {
 
+    public InvoiceStatusTotals computeStatusTotals() {
+        String sql = """
+        SELECT 
+            SUM(CASE WHEN i.status = 'PAID' THEN il.quantity * il.unit_price ELSE 0 END) as paid,
+            SUM(CASE WHEN i.status = 'CONFIRMED' THEN il.quantity * il.unit_price ELSE 0 END) as confirmed,
+            SUM(CASE WHEN i.status = 'DRAFT' THEN il.quantity * il.unit_price ELSE 0 END) as draft
+        FROM invoice i
+        JOIN invoice_line il ON i.id = il.invoice_id
+    """;
+
+        try (Connection conn = new DBConnection().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return new InvoiceStatusTotals(
+                        rs.getDouble("paid"),
+                        rs.getDouble("confirmed"),
+                        rs.getDouble("draft")
+                );
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in compute Status : " + e.getMessage());
+        }
+        return new InvoiceStatusTotals(0, 0, 0);
+    }
 
     public List<InvoiceTotal> getInvoiceTotalsByStatus(String status) {
         List<InvoiceTotal> totals = new ArrayList<>();
