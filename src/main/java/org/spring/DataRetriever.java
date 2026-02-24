@@ -13,6 +13,40 @@ import java.util.List;
 public class DataRetriever {
 
 
+    public List<InvoiceTotal> getInvoiceTotalsByStatus(String status) {
+        List<InvoiceTotal> totals = new ArrayList<>();
+
+        String sql = """
+        SELECT i.customer_name, i.status, SUM(il.quantity * il.unit_price) as total_invoice
+        FROM invoice i
+        JOIN invoice_line il ON i.id = il.invoice_id
+        WHERE i.status = ?
+        GROUP BY i.id, i.customer_name, i.status
+    """;
+
+        // le resultat doit être en seule ligne  sum( case when = 'PAID' the invooice_line
+        //SUM( case when = 'PAID' the invoice_line il.quantity * il.unit_price)
+         //from invoice_line
+        try (Connection conn = new DBConnection().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, status);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    totals.add(new InvoiceTotal(
+                            rs.getString("customer_name"),
+                            rs.getDouble("total_invoice"),
+                            rs.getString("status")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error in Invoice Totals ByStatus : " + e.getMessage());
+        }
+        return totals;
+    }
+
     public List<InvoiceTotal> getConfirmedInvoiceTotals() {
         List<InvoiceTotal> totals = new ArrayList<>();
 
